@@ -1,0 +1,19 @@
+{
+  "name": "jquery-select-areas",
+  "version": "1.0.0",
+  "description": "JQuery plugin for selecting an extensible area in a picture",
+  "main": "jquery.selectareas.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/taliator/jquery-select-areas.git"
+  },
+  "author": "Talia Imbrescia",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/taliator/jquery-select-areas/issues"
+  },
+  "homepage": "https://github.com/taliator/jquery-select-areas#readme"
+}
