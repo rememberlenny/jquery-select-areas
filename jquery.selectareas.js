@@ -13,6 +13,7 @@
             $selection,
             $resizeHandlers = {},
             $btDelete,
+            hasMovedCursor = false,
             resizeHorizontally = true,
             resizeVertically = true,
             selectionOffset = [0, 0],
@@ -23,7 +24,8 @@
                 y: 0,
                 z: 0,
                 height: 0,
-                width: 0
+                width: 0,
+                scale: parent.ratio
             },
             blur = function () {
                 area.z = 0;
@@ -37,8 +39,8 @@
             getData = function () {
                 return area;
             },
-            fireEvent = function (event) {
-                $image.trigger(event, [area.id, parent.areas()]);
+            fireEvent = function (event, triggerName) {
+                $image.trigger(event, [area.id, parent.areas(), parent.relativeAreas(), triggerName]);
             },
             cancelEvent = function (e) {
                 var event = e || window.event || {};
@@ -196,8 +198,7 @@
                         updateResizeHandlers();
                         updateBtDelete();
                         break;
-
-                    //case "releaseSelection":
+                    // case "releaseSelection":
                     default:
                         updateSelection();
                         updateResizeHandlers(true);
@@ -269,6 +270,7 @@
             resizeSelection = function (event) {
                 cancelEvent(event);
                 focus();
+                hasMovedCursor = true;
 
                 var mousePosition = getMousePosition(event);
 
@@ -358,7 +360,7 @@
                     area.y = selectionOrigin[1];
                 }
 
-                fireEvent("changing");
+                fireEvent("changing", "resize");
                 refresh("resizeSelection");
             },
             moveSelection = function (event) {
@@ -374,7 +376,7 @@
                     y: mousePosition[1] - selectionOffset[1]
                 });
 
-                fireEvent("changing");
+                fireEvent("changing", "move");
             },
             moveTo = function (point) {
                 // Set the selection position on the x-axis relative to the bounds
@@ -405,17 +407,22 @@
                 cancelEvent(event);
                 off("move", "stop");
 
-                // Update the selection origin
-                selectionOrigin[0] = area.x;
-                selectionOrigin[1] = area.y;
+                if ( options.createOnClick || hasMovedCursor ) {
+                    // Update the selection origin
+                    selectionOrigin[0] = area.x;
+                    selectionOrigin[1] = area.y;
 
-                // Reset the resize constraints
-                resizeHorizontally = true;
-                resizeVertically = true;
+                    // Reset the resize constraints
+                    resizeHorizontally = true;
+                    resizeVertically = true;
 
-                fireEvent("changed");
+                    fireEvent("changed", "release");
 
-                refresh("releaseSelection");
+                    refresh("releaseSelection");
+                }
+                else {
+                    deleteSelection();
+                }
             },
             deleteSelection = function (event) {
                 cancelEvent(event);
@@ -425,10 +432,10 @@
                     $handler.remove();
                 });
                 if ($btDelete) {
-                    $btDelete.remove();    
-                } 
+                    $btDelete.remove();
+                }
                 parent._remove(id);
-                fireEvent("changed");
+                fireEvent("changed", "delete");
             },
             getElementOffset = function (object) {
                 var offset = $(object).offset();
@@ -495,14 +502,21 @@
         }
         // initialize delete button
         if (options.allowDelete) {
+            var $selectAreasDeleteArea = $("<div class=\"select-areas-delete-area\" />")
             var bindToDelete = function ($obj) {
                 $obj.click(deleteSelection)
                     .bind("touchstart", deleteSelection)
                     .bind("tap", deleteSelection);
                 return $obj;
             };
+            if ( options.deleteIcon ) {
+                $selectAreasDeleteArea.append( options.deleteIcon )
+            }
+            else {
+                $selectAreasDeleteArea.append( '<button>Delete</button>')
+            }
             $btDelete = bindToDelete($("<div class=\"delete-area\" />"))
-                .append(bindToDelete($("<div class=\"select-areas-delete-area\" />")))
+                .append(bindToDelete( $selectAreasDeleteArea ))
                 .insertAfter($selection);
         }
 
@@ -535,14 +549,20 @@
                     point.x = area.x + point.r;
                 }
                 moveTo(point);
-                fireEvent("changed");
+                fireEvent("changed", "nudge");
             },
+            // @TODO
+            // We'll have to check here for a scale value; if one exists, we'll
+            // need to recalculate based on current image size; Maybe it ccan
+            // always expect relativeAreas? Doesn't really matter, would still have
+            // to do math
             set: function (dimensions, silent) {
                 area = $.extend(area, dimensions);
+
                 selectionOrigin[0] = area.x;
                 selectionOrigin[1] = area.y;
                 if (! silent) {
-                    fireEvent("changed");
+                    fireEvent("changed", "set");
                 }
             },
             contains: function (point) {
@@ -564,16 +584,20 @@
                 allowSelect: true,
                 allowDelete: true,
                 allowNudge: true,
+                createOnClick: true,
+                deleteIcon: null,
                 aspectRatio: 0,
                 minSize: [0, 0],
                 maxSize: [0, 0],
+                highlightMode: false,
                 width: 0,
                 maxAreas: 0,
                 outlineOpacity: 0.5,
                 overlayOpacity: 0.5,
                 areas: [],
                 onChanging: null,
-                onChanged: null
+                onChanged: null,
+                onLoaded: null
             };
 
         this.options = $.extend(defaultOptions, customOptions);
@@ -596,8 +620,15 @@
         if (this.options.onChanging) {
             this.$image.on("changing", this.options.onChanging);
         }
+        if ( this.options.highlightMode ) {
+            this.$image.on("changed", function (e) {
+                // that.blurAll();
+                that.$image.removeClass("blurred");
+            });
+        }
+
         if (this.options.onChanged) {
-            this.$image.on("changed", this.options.onChanged);
+            this.$image.on("changed", this.options.onChanged );
         }
         if (this.options.onLoaded) {
             this.$image.on("loaded", this.options.onLoaded);
@@ -611,6 +642,10 @@
                 height: this.$image.height()
             });
 
+        if ( this.options.highlightMode ) {
+            this.$holder.addClass( 'highlight-mode' )
+        }
+
         // Wrap the holder around the image
         this.$image.wrap(this.$holder)
             .css({
@@ -620,7 +655,7 @@
         // Initialize an overlay layer and place it above the image
         this.$overlay = $("<div class=\"select-areas-overlay\" />")
             .css({
-                opacity : this.options.overlayOpacity,
+                opacity : this.options.highlightMode ? 0 : this.options.overlayOpacity,
                 position : "absolute",
                 width: this.$image.width(),
                 height: this.$image.height()
@@ -631,7 +666,7 @@
         this.$trigger = $("<div />")
             .css({
                 backgroundColor : "#000000",
-                opacity : 0,
+                opacity: 0,
                 position : "absolute",
                 width: this.$image.width(),
                 height: this.$image.height()
@@ -677,7 +712,11 @@
             });
         }
     };
-
+// @TODO when selection is finished, unblur the image.
+// @TODO (somewhere else) allow an option to show the selections as highlights
+// rather than as clear areas over the blurred image
+// mode: highlight / default
+// highlightColor: (default to gray, 25% opacity )
     $.imageSelectAreas.prototype._refresh = function () {
         var nbAreas = this.areas().length;
         this.$overlay.css({
@@ -799,6 +838,7 @@
             ret[i].y = scale(ret[i].y);
             ret[i].width = scale(ret[i].width);
             ret[i].height = scale(ret[i].height);
+            ret[i].scale = 1
         }
         return ret;
     };
