@@ -819,9 +819,9 @@
             scaledArea.width = scale( area.width );
             scaledArea.height = scale( area.height );
             scaledArea.scale = scaledTo;
-            scaledArea.positionX = percentage( - area.x / this.$image.width() );
-            scaledArea.positionY  = percentage( - area.y / this.$image.width() );
-            scaledArea.backgroundSize = percentage( area.width / this.$image.width() );
+            scaledArea.positionX = percentage( area.x / this.$image.width() );
+            scaledArea.positionY  = percentage( area.y / this.$image.width() );
+            scaledArea.percentageWidth = area.width / this.$image.width();
         return scaledArea;
     };
 
