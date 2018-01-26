@@ -15,6 +15,7 @@
             $btDelete,
             $buttonArea,
             hasMovedCursor = false,
+            hasMoved = false,
             resizeHorizontally = true,
             resizeVertically = true,
             selectionOffset = [0, 0],
@@ -251,7 +252,7 @@
                 cancelEvent(event);
                 focus();
                 on("move", moveSelection);
-                on("stop", releaseSelection, { action: 'pick' } );
+                on("stop", releaseSelection, { action: 'pick' });
 
                 var mousePosition = getMousePosition(event);
 
@@ -386,6 +387,7 @@
                 if (! options.allowMove) {
                     return;
                 }
+                hasMoved = true;
                 focus();
 
                 var mousePosition = getMousePosition(event);
@@ -425,7 +427,7 @@
                 cancelEvent(event);
                 off("move", "stop");
 
-                if ( event.data.action === 'startSelection' &&
+                if ( event.data.action === 'start' &&
                     ! ( options.createOnClick || hasMovedCursor )
                 ) {
                     deleteSelection();
@@ -439,7 +441,13 @@
                     resizeHorizontally = true;
                     resizeVertically = true;
 
+                    if ( event.data.action === 'pick' && hasMoved ) {
+                        event.data.action = 'move'
+                    }
+
                     fireEvent("changed", "release", event.data.action );
+
+                    hasMoved = false;
 
                     refresh("releaseSelection");
                 }
@@ -513,7 +521,7 @@
             .insertAfter($trigger);
 
         // Initialize a selection layer and place it above the outline layer
-        $selection = $("<div />")
+        $selection = $("<div id=\"" + id + "\"/>")
             .addClass("select-areas-background-area")
             .css({
                 background : "#fff url(" + $image.attr("src") + ") no-repeat",
