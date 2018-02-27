@@ -30,7 +30,8 @@
 	height: 16px;
 	width: 16px;
 }
-.delete-area {
+.delete-area,
+.select-areas-button-area {
 	position: absolute;
 	cursor: pointer;
 	padding: 5px;
