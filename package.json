@@ -1,6 +1,6 @@
 {
   "name": "jquery-select-areas",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "JQuery plugin for selecting an extensible area in a picture",
   "main": "jquery.selectareas.js",
   "scripts": {

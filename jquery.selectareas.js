@@ -820,8 +820,10 @@
             scaledArea.height = scale( area.height );
             scaledArea.scale = scaledTo;
             scaledArea.positionX = percentage( area.x / this.$image.width() );
-            scaledArea.positionY  = percentage( area.y / this.$image.width() );
-            scaledArea.percentageWidth = area.width / this.$image.width();
+            scaledArea.positionY  = percentage( area.y / this.$image.height() );
+            scaledArea.imageWidth = this.$image.width();
+            scaledArea.imageHeight = this.$image.height();
+
         return scaledArea;
     };
 
